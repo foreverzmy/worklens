@@ -1,12 +1,15 @@
 package repo
 
 import (
+	"bytes"
+
 	"github.com/go-git/go-git/v5"
 )
 
 type Repo struct {
 	*git.Repository
-	Path string
+	Path   string
+	buffer bytes.Buffer
 }
 
 func PlainOpen(repoPath string) (*Repo, error) {
