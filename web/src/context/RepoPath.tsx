@@ -41,6 +41,20 @@ export const useSetRepoPath = () => {
 	return setRepoPath;
 };
 
+export const useResetRepoPath = () => {
+	const ctx = useContext(RepoPathContext);
+
+	const resetRepoPath = useCallback(() => {
+		const usp = new URLSearchParams(location.search);
+		usp.delete('repo');
+		location.search = usp.toString();
+
+		return ctx.setRepoPath('');
+	}, [ctx.setRepoPath]);
+
+	return resetRepoPath;
+};
+
 export const RepoPathProvider: FC<PropsWithChildren> = ({ children }) => {
 	const [repoPath, setRepoPath] = useState(() => {
 		const usp = new URLSearchParams(location.search);

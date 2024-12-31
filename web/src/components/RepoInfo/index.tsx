@@ -1,14 +1,16 @@
 import { useBehaviorSubjectState } from '@service/useBehaviorSubjectState';
 import { useStream } from '@service/useStream';
 import type { RepoReference } from '@typings/message';
+import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Tag } from 'primereact/tag';
 import type { FC } from 'react';
 import { scan } from 'rxjs';
-import { useRepoPath } from '../../context';
+import { useRepoPath, useResetRepoPath } from '../../context';
 
 export const RepoInfo: FC = () => {
 	const repoPath = useRepoPath();
+	const resetRepoPath = useResetRepoPath();
 	const [remotes, { sub$Ref: remoteSub$Ref }] = useBehaviorSubjectState<any[]>(
 		[],
 	);
@@ -32,7 +34,12 @@ export const RepoInfo: FC = () => {
 	return (
 		<div className="m-4 flex flex-col gap-4">
 			<Card title="仓库信息">
-				<p className="m-0">{repoPath}</p>
+				<p className="m-0">
+					{repoPath}{' '}
+					<Button size="small" onClick={resetRepoPath}>
+						切换仓库
+					</Button>
+				</p>
 				<p>
 					{remotes.map((remote) => (
 						<p key={remote.name}>{remote.name}</p>
