@@ -35,24 +35,34 @@ export const RepoInfo: FC = () => {
 		<div className="m-4 flex flex-col gap-4">
 			<Card title="仓库信息">
 				<p className="m-0">
-					{repoPath}{' '}
+					{repoPath}
 					<Button size="small" onClick={resetRepoPath}>
 						切换仓库
 					</Button>
 				</p>
 				<p>
 					{remotes.map((remote) => (
-						<p key={remote.name}>{remote.name}</p>
+						<p key={remote.name}>
+							{remote.name}：{remote.urls.join(',')}
+						</p>
 					))}
 				</p>
 			</Card>
 			<Card title="分支信息">
 				<p>
-					{branches.map((branch) => (
-						<p key={branch.name}>
-							{branch.name} {branch.name === head?.name && <Tag value="head" />}
+					{head !== null && (
+						<p key={head.name}>
+							{head.name} {head.name === head?.name && <Tag value="head" />}
 						</p>
-					))}
+					)}
+					{branches
+						.filter((b) => !head || b.name !== head.name)
+						.map((branch) => (
+							<p key={branch.name}>
+								{branch.name}{' '}
+								{branch.name === head?.name && <Tag value="head" />}
+							</p>
+						))}
 				</p>
 			</Card>
 		</div>
