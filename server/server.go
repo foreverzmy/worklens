@@ -1,8 +1,8 @@
 package server
 
 import (
-	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"strings"
 
@@ -11,9 +11,10 @@ import (
 )
 
 type Server struct {
-	Port     int
-	WebFiles *embed.FS
-	Routes   map[string]fasthttp.RequestHandler
+	Port       int
+	WebFiles   fs.FS
+	Middleware func(next fasthttp.RequestHandler) fasthttp.RequestHandler
+	Routes     map[string]fasthttp.RequestHandler
 }
 
 func (s *Server) Start() {
@@ -35,7 +36,7 @@ func (s *Server) Start() {
 	staticHandler := fs.NewRequestHandler()
 
 	// 创建请求路由器
-	router := func(ctx *fasthttp.RequestCtx) {
+	router := s.Middleware(func(ctx *fasthttp.RequestCtx) {
 		pathname := string(ctx.Path())
 		for route, handler := range s.Routes {
 			if pathname == route {
@@ -56,7 +57,7 @@ func (s *Server) Start() {
 		}
 
 		ctx.NotFound()
-	}
+	})
 
 	listener, err := reuseport.Listen("tcp4", fmt.Sprintf(":%d", s.Port))
 	if err != nil {

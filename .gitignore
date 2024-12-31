@@ -26,3 +26,17 @@ go.work.sum
 
 files.csv
 files.txt
+
+# Local
+.DS_Store
+*.local
+*.log*
+
+# Dist
+web/node_modules/
+web/dist/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
