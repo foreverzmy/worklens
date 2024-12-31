@@ -59,7 +59,7 @@ export const RepoInfo: FC = () => {
 						.filter((b) => !head || b.name !== head.name)
 						.map((branch) => (
 							<p key={branch.name}>
-								{branch.name}{' '}
+								{branch.shortName}
 								{branch.name === head?.name && <Tag value="head" />}
 							</p>
 						))}
