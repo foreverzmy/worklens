@@ -3,4 +3,6 @@ body {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   width: 100vw;
   height: 100vh;
+
+  background-color: rgb(226, 232, 240);
 }

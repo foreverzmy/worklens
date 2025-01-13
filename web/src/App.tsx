@@ -1,7 +1,7 @@
 import { PrimeReactProvider } from "primereact/api";
 import { Layout } from "./components/Layout";
 import { RepoPathProvider } from "./context";
-import "primereact/resources/themes/lara-light-cyan/theme.css";
+import "primereact/resources/themes/lara-light-purple/theme.css";
 import "uno.css";
 import "./App.css";
 
