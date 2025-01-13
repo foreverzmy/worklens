@@ -1,0 +1,10 @@
+.eslintrc.js
+**/*/.eslintrc.js
+
+pnpm-lock.yaml
+**/*/pnpm-lock.yaml
+
+.prettierrc.cjs
+**/*/.prettierrc.cjs
+
+.husky/

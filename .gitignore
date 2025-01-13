@@ -40,3 +40,6 @@ web/dist/
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+logs/
+cache/
