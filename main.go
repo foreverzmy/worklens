@@ -25,11 +25,13 @@ type BlameState struct {
 
 func main() {
 	repoFlag := flag.String("repo", "", "")
+	branchFlag := flag.String("branch", "main", "")
 	flag.Parse()
 
 	ig, _ := ignore.CompileIgnoreFile("fileignore")
 
 	repoRoot := *repoFlag
+	branch := *branchFlag
 	if repoRoot == "" {
 		log.Fatalf("仓库目录未设置")
 	}
@@ -45,33 +47,43 @@ func main() {
 	// 设置日志输出到文件
 	log.SetOutput(file)
 
+	parts := strings.Split(repoRoot, "/")
+
+	repoName := parts[len(parts)-1]
+
 	r, err := repo.PlainOpen(repoRoot)
 	if err != nil {
 		log.Println("Error opening repository:", err)
 		return
 	}
 
-	head, err := r.Head()
-	if err != nil {
-		log.Println("Error get Head Branch:", err)
-	}
-	log.Printf("head: %s\n", head.String())
-	fileName := fmt.Sprintf("cache/%s.yaml", strings.ReplaceAll(head.Name().Short(), "/", "_"))
+	fileName := fmt.Sprintf("cache/%s.yaml", strings.ReplaceAll(repoName, "/", "_"))
 	os.Remove(fileName)
 	headFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("无法打开日志文件: %v", err)
+		log.Fatalf("无法打开yaml: %v", err)
 	}
 	defer headFile.Close()
 
 	writer := bufio.NewWriter(headFile)
-	_, err = writer.WriteString(fmt.Sprintf("branch: %s\n", head.Name().Short()))
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
-	}
+	writer.WriteString(fmt.Sprintf("repo: %s\n", repoName))
+	writer.WriteString(fmt.Sprintf("branch: %s\n", branch))
 
-	commit, _, err := r.GetBranchFiles(head.Name().Short())
+	csvName := fmt.Sprintf("cache/%s.csv", strings.ReplaceAll(repoName, "/", "_"))
+	os.Remove(csvName)
+	csvFile, err := os.OpenFile(csvName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("无法打开yaml: %v", err)
+	}
+	bom := []byte{0xEF, 0xBB, 0xBF}
+	_, err = csvFile.Write(bom)
+	if err != nil {
+		panic(err)
+	}
+	defer csvFile.Close()
+	csvWriter := bufio.NewWriter(csvFile)
+
+	commit, _, err := r.GetBranchFiles(branch)
 	if err != nil {
 		log.Println("Error get Head branch files:", err)
 		return
@@ -85,24 +97,30 @@ func main() {
 
 	blameLines := make(map[string]*BlameState)
 
-	limitTime, _ := time.Parse("2006-01-02", dateLimit)
-
 	log.Println("Commits before", dateLimit, ":")
 
 	writer.WriteString("commits:\n")
 	count := 0
+	validCount := 0
 	err = commitIter.ForEach(func(c *object.Commit) error {
-		if c.Committer.When.Before(limitTime) {
-			count++
-			writer.WriteString(fmt.Sprintf("  - No: %d\n", count))
-			writer.WriteString(fmt.Sprintf("    hash: \"%s\"\n", c.Hash))
-			writer.WriteString(fmt.Sprintf("    author: \"%s\"\n", c.Author.Email))
-			writer.WriteString(fmt.Sprintf("    date: \"%s\"\n", c.Committer.When.String()))
-			commitMessage := strings.TrimSpace(c.Message)
-			multiLineString := strings.ReplaceAll(commitMessage, "\r\n", "\n")
-			singleLineMessage := strings.ReplaceAll(multiLineString, "\n", "\\n")
-			writer.WriteString(fmt.Sprintf("    message: \"%s\"\n", singleLineMessage))
+		count++
+		parentCount := len(c.ParentHashes)
+		writer.WriteString(fmt.Sprintf("  - No: %d\n", count))
+		writer.WriteString(fmt.Sprintf("  - parents: %d\n", parentCount))
+		writer.WriteString(fmt.Sprintf("    hash: \"%s\"\n", c.Hash))
+		writer.WriteString(fmt.Sprintf("    author: \"%s\"\n", c.Author.Email))
+		writer.WriteString(fmt.Sprintf("    date: \"%s\"\n", c.Committer.When.String()))
 
+		commitMessage := strings.TrimSpace(c.Message)
+		multiLineString := strings.ReplaceAll(commitMessage, "\r\n", "\n")
+		singleLineMessage := strings.ReplaceAll(multiLineString, "\n", "\\n")
+		writer.WriteString(fmt.Sprintf("    message: \"%s\"\n", singleLineMessage))
+
+		if isValidCommit(c) {
+			validCount++
+			writer.WriteString(fmt.Sprintf("    Count: %d\n", validCount))
+
+			fmt.Printf("%d: %s, %s, %s, %s \n\n", validCount, c.Author.Email, c.Hash, c.Committer.When.String(), singleLineMessage)
 			if blameLines[c.Author.Email] == nil {
 				blameLines[c.Author.Email] = &BlameState{0, 0}
 			}
@@ -114,9 +132,11 @@ func main() {
 			addition := 0
 			deletion := 0
 			writer.WriteString("    stat:\n")
+			files := ""
 			for _, stat := range stats {
 				names := strings.Split(stat.Name, " => ")
 				if !ig.MatchesPath(names[0]) {
+					files += fmt.Sprintf("%s\\n", names[0])
 					writer.WriteString(fmt.Sprintf("      - \"%s\"\n", stat.Name))
 					addition += stat.Addition
 					deletion += stat.Deletion
@@ -126,6 +146,10 @@ func main() {
 			blameLines[c.Author.Email].Deletion += deletion
 			writer.WriteString(fmt.Sprintf("    addition: %d\n", addition))
 			writer.WriteString(fmt.Sprintf("    deletion: %d\n", deletion))
+
+			csvWriter.WriteString(fmt.Sprintf("%s, %s, %s, %d, %d, %s, %s \n", c.Hash, c.Committer.When.Format("2006-01-02 15:04:05"), c.Author.Email, addition, deletion, singleLineMessage, files))
+		} else {
+			fmt.Printf("%d: %s, %s \n\n", validCount, c.Author.Email, c.Committer.When.Format("2006-01-02 15:04:05"))
 		}
 		return nil
 	})
@@ -144,4 +168,35 @@ func main() {
 	if err = writer.Flush(); err != nil {
 		fmt.Println("Error flushing writer:", err)
 	}
+
+	if err = csvWriter.Flush(); err != nil {
+		fmt.Println("Error flushing csv writer:", err)
+	}
+}
+
+func isValidCommit(c *object.Commit) bool {
+	limitTime, _ := time.Parse("2006-01-02", dateLimit)
+	if !c.Committer.When.Before(limitTime) {
+		return false
+	}
+
+	if c.Message == "feat: merge main" {
+		return false
+	}
+
+	if c.Message == "feat: merge from master" {
+		return false
+	}
+
+	parentCount := len(c.ParentHashes)
+
+	if parentCount < 2 {
+		return true
+	}
+
+	if parentCount == 2 {
+		return !strings.HasPrefix(c.Message, "Merge ")
+	}
+
+	return false
 }

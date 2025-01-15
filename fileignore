@@ -1,10 +1,33 @@
 .eslintrc.js
 **/*/.eslintrc.js
 
+rush.json
+
+apps/main/dist/
+
 pnpm-lock.yaml
 **/*/pnpm-lock.yaml
+common/config/rush/pnpm-lock.yaml
+package-lock.json
 
 .prettierrc.cjs
 **/*/.prettierrc.cjs
 
+**/*/tailwind.build.css
+
+packages/ditom-transformer/tests/**/*.json
+
 .husky/
+
+packages/code-editor1/
+
+packages/code-editor/src/worker/
+
+go.sum
+go.mod
+**/*/go.sum
+**/*/go.mod
+
+**/kitex_gen/
+
+**/*.yaml
